@@ -43,13 +43,18 @@ for (const skillName of fs.readdirSync(skillsDir)) {
     const line = frontmatterLines[i];
     const nameMatch = line.match(/^name:\s*(.+)$/);
     const descMatch = line.match(/^description:\s*(.*)$/);
-
     if (nameMatch) name = nameMatch[1].trim();
     if (descMatch) description = parseYamlValue(descMatch[1], frontmatterLines, i);
   }
 
   if (!name || !description) continue;
-  skills.push({ name, description });
+
+  // Listar todos los archivos de la carpeta
+  const files = fs.readdirSync(skillPath).filter(f => 
+    fs.statSync(path.join(skillPath, f)).isFile()
+  );
+
+  skills.push({ name, description, files });
 }
 
 for (const outputDir of outputDirs) {
@@ -58,6 +63,16 @@ for (const outputDir of outputDirs) {
     path.join(outputDir, "index.json"),
     JSON.stringify({ skills }, null, 2)
   );
+
+  // Copiar los archivos de cada skill
+  for (const skill of skills) {
+    const srcDir = path.join(skillsDir, skill.name);
+    const destDir = path.join(outputDir, skill.name);
+    fs.mkdirSync(destDir, { recursive: true });
+    for (const file of skill.files) {
+      fs.copyFileSync(path.join(srcDir, file), path.join(destDir, file));
+    }
+  }
 }
 
 console.log(`Generados ${skills.length} skills:`, skills.map(s => s.name));
